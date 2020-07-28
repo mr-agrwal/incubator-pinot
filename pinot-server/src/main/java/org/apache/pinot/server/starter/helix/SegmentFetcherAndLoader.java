@@ -40,6 +40,7 @@ import org.apache.pinot.spi.crypt.PinotCrypter;
 import org.apache.pinot.spi.crypt.PinotCrypterFactory;
 import org.apache.pinot.spi.env.PinotConfiguration;
 import org.apache.pinot.spi.filesystem.PinotFSFactory;
+import org.apache.pinot.spi.utils.retry.AttemptsExceededException;
 import org.apache.pinot.spi.utils.retry.RetryPolicies;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -187,7 +188,7 @@ public class SegmentFetcherAndLoader {
       throws Exception {
     // Even if the tar file has been downloaded successfully, the file itself could be corrupted during the transmission.
     // Thus, we should re-download it again.
-    RetryPolicies.fixedDelayRetryPolicy(5, 5_000L).attempt(() -> {
+    RetryPolicies.fixedDelayRetryPolicy(3, 5_000L).attempt(() -> {
       File tempDir = new File(new File(_instanceDataManager.getSegmentFileDirectory(), tableName),
           "tmp-" + segmentName + "-" + UUID.randomUUID());
       FileUtils.forceMkdir(tempDir);
@@ -195,6 +196,7 @@ public class SegmentFetcherAndLoader {
       File tempTarFile = new File(tempDir, segmentName + TAR_GZ_SUFFIX);
       File tempSegmentDir = new File(tempDir, segmentName);
       try {
+        // There is also a retry logic here for downloading segment to local.
         SegmentFetcherFactory.fetchSegmentToLocal(uri, tempDownloadFile);
         if (crypter != null) {
           crypter.decrypt(tempDownloadFile, tempTarFile);
@@ -214,8 +216,11 @@ public class SegmentFetcherAndLoader {
         FileUtils.moveDirectory(tempIndexDir, indexDir);
         LOGGER.info("Successfully downloaded segment: {} for table: {} to: {}", segmentName, tableName, indexDir);
         return Boolean.TRUE;
+      } catch (AttemptsExceededException e) {
+        LOGGER.error("Attempts exceed when downloading segment {} for table: {} to local", segmentName, tableName, e);
+        throw e;
       } catch (Exception e) {
-        LOGGER.error("Caught exception when downloading segment to local", e);
+        LOGGER.error("Caught exception when downloading segment {} for table: {} to local", segmentName, tableName, e);
         return Boolean.FALSE;
       } finally {
         FileUtils.deleteQuietly(tempDir);
