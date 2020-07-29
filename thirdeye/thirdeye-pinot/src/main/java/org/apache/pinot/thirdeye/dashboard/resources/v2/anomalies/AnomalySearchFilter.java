@@ -1,5 +1,6 @@
 package org.apache.pinot.thirdeye.dashboard.resources.v2.anomalies;
 
+import java.util.Collections;
 import java.util.List;
 
 
@@ -15,6 +16,23 @@ public class AnomalySearchFilter {
   private final List<Long> anomalyIds;
   private final Long startTime;
   private final Long endTime;
+
+  /**
+   * Instantiates a new Anomaly search filter.
+   *
+   * @param startTime the start time
+   * @param endTime the end time
+   */
+  public AnomalySearchFilter(Long startTime, Long endTime) {
+    this.startTime = startTime;
+    this.endTime = endTime;
+    this.feedbacks = Collections.emptyList();
+    this.subscriptionGroups = Collections.emptyList();
+    this.detectionNames = Collections.emptyList();
+    this.metrics = Collections.emptyList();
+    this.datasets = Collections.emptyList();
+    this.anomalyIds = Collections.emptyList();
+  }
 
   /**
    * Instantiates a new Anomaly search filter.
